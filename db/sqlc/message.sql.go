@@ -47,3 +47,164 @@ func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (M
 	)
 	return i, err
 }
+
+const deleteMessages = `-- name: DeleteMessages :exec
+DELETE FROM messages
+WHERE id=$1
+`
+
+func (q *Queries) DeleteMessages(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, deleteMessages, id)
+	return err
+}
+
+const getMessages = `-- name: GetMessages :one
+SELECT id, message, user_id, parent_id, likes_count, answered, room_id, created_at, updated_at FROM messages
+WHERE id=$1 LIMIT 1
+`
+
+func (q *Queries) GetMessages(ctx context.Context, id int64) (Message, error) {
+	row := q.db.QueryRow(ctx, getMessages, id)
+	var i Message
+	err := row.Scan(
+		&i.ID,
+		&i.Message,
+		&i.UserID,
+		&i.ParentID,
+		&i.LikesCount,
+		&i.Answered,
+		&i.RoomID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const listMessages = `-- name: ListMessages :many
+SELECT id, message, user_id, parent_id, likes_count, answered, room_id, created_at, updated_at FROM messages
+ORDER BY id
+LIMIT $1
+OFFSET $2
+`
+
+type ListMessagesParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) ListMessages(ctx context.Context, arg ListMessagesParams) ([]Message, error) {
+	rows, err := q.db.Query(ctx, listMessages, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Message
+	for rows.Next() {
+		var i Message
+		if err := rows.Scan(
+			&i.ID,
+			&i.Message,
+			&i.UserID,
+			&i.ParentID,
+			&i.LikesCount,
+			&i.Answered,
+			&i.RoomID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateLikes = `-- name: UpdateLikes :one
+UPDATE messages 
+SET likes_count = $2 
+WHERE id=$1
+RETURNING id, message, user_id, parent_id, likes_count, answered, room_id, created_at, updated_at
+`
+
+type UpdateLikesParams struct {
+	ID         int64       `json:"id"`
+	LikesCount pgtype.Int8 `json:"likes_count"`
+}
+
+func (q *Queries) UpdateLikes(ctx context.Context, arg UpdateLikesParams) (Message, error) {
+	row := q.db.QueryRow(ctx, updateLikes, arg.ID, arg.LikesCount)
+	var i Message
+	err := row.Scan(
+		&i.ID,
+		&i.Message,
+		&i.UserID,
+		&i.ParentID,
+		&i.LikesCount,
+		&i.Answered,
+		&i.RoomID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateMessages = `-- name: UpdateMessages :one
+UPDATE messages 
+SET message = $2 
+WHERE id=$1
+RETURNING id, message, user_id, parent_id, likes_count, answered, room_id, created_at, updated_at
+`
+
+type UpdateMessagesParams struct {
+	ID      int64       `json:"id"`
+	Message pgtype.Text `json:"message"`
+}
+
+func (q *Queries) UpdateMessages(ctx context.Context, arg UpdateMessagesParams) (Message, error) {
+	row := q.db.QueryRow(ctx, updateMessages, arg.ID, arg.Message)
+	var i Message
+	err := row.Scan(
+		&i.ID,
+		&i.Message,
+		&i.UserID,
+		&i.ParentID,
+		&i.LikesCount,
+		&i.Answered,
+		&i.RoomID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateParent = `-- name: UpdateParent :one
+UPDATE messages 
+SET parent_id = $2 
+WHERE id=$1
+RETURNING id, message, user_id, parent_id, likes_count, answered, room_id, created_at, updated_at
+`
+
+type UpdateParentParams struct {
+	ID       int64       `json:"id"`
+	ParentID pgtype.Int8 `json:"parent_id"`
+}
+
+func (q *Queries) UpdateParent(ctx context.Context, arg UpdateParentParams) (Message, error) {
+	row := q.db.QueryRow(ctx, updateParent, arg.ID, arg.ParentID)
+	var i Message
+	err := row.Scan(
+		&i.ID,
+		&i.Message,
+		&i.UserID,
+		&i.ParentID,
+		&i.LikesCount,
+		&i.Answered,
+		&i.RoomID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
