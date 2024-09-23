@@ -5,33 +5,34 @@
 package db
 
 import (
-	"github.com/jackc/pgx/v5/pgtype"
+	"database/sql"
 )
 
 type Message struct {
 	ID int64 `json:"id"`
 	// Content of the post
-	Message    pgtype.Text        `json:"message"`
-	UserID     pgtype.Int8        `json:"user_id"`
-	ParentID   pgtype.Int8        `json:"parent_id"`
-	LikesCount pgtype.Int8        `json:"likes_count"`
-	Answered   pgtype.Bool        `json:"answered"`
-	RoomID     pgtype.Int8        `json:"room_id"`
-	CreatedAt  pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+	Message    sql.NullString `json:"message"`
+	UserID     int64          `json:"user_id"`
+	ParentID   sql.NullString `json:"parent_id"`
+	LikesCount sql.NullInt64  `json:"likes_count"`
+	Answered   sql.NullBool   `json:"answered"`
+	RoomID     int64          `json:"room_id"`
+	CreatedAt  sql.NullTime   `json:"created_at"`
+	UpdatedAt  sql.NullTime   `json:"updated_at"`
 }
 
 type Room struct {
-	ID        int64              `json:"id"`
-	UserID    pgtype.Int8        `json:"user_id"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	ID        int64        `json:"id"`
+	UserID    int64        `json:"user_id"`
+	CreatedAt sql.NullTime `json:"created_at"`
+	UpdatedAt sql.NullTime `json:"updated_at"`
 }
 
 type User struct {
-	ID        int64              `json:"id"`
-	Username  string             `json:"username"`
-	Password  string             `json:"password"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	ID        int64        `json:"id"`
+	Username  string       `json:"username"`
+	Password  string       `json:"password"`
+	Email     string       `json:"email"`
+	CreatedAt sql.NullTime `json:"created_at"`
+	UpdatedAt sql.NullTime `json:"updated_at"`
 }
