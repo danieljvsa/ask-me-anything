@@ -7,8 +7,6 @@ package db
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createRoom = `-- name: CreateRoom :one
@@ -19,8 +17,8 @@ INSERT INTO rooms (
 ) RETURNING id, user_id, created_at, updated_at
 `
 
-func (q *Queries) CreateRoom(ctx context.Context, userID pgtype.Int8) (Room, error) {
-	row := q.db.QueryRow(ctx, createRoom, userID)
+func (q *Queries) CreateRoom(ctx context.Context, userID int64) (Room, error) {
+	row := q.db.QueryRowContext(ctx, createRoom, userID)
 	var i Room
 	err := row.Scan(
 		&i.ID,
@@ -37,7 +35,7 @@ WHERE id=$1
 `
 
 func (q *Queries) DeleteRoom(ctx context.Context, id int64) error {
-	_, err := q.db.Exec(ctx, deleteRoom, id)
+	_, err := q.db.ExecContext(ctx, deleteRoom, id)
 	return err
 }
 
@@ -47,7 +45,7 @@ WHERE id=$1 LIMIT 1
 `
 
 func (q *Queries) GetRoom(ctx context.Context, id int64) (Room, error) {
-	row := q.db.QueryRow(ctx, getRoom, id)
+	row := q.db.QueryRowContext(ctx, getRoom, id)
 	var i Room
 	err := row.Scan(
 		&i.ID,
@@ -71,7 +69,7 @@ type ListRoomsParams struct {
 }
 
 func (q *Queries) ListRooms(ctx context.Context, arg ListRoomsParams) ([]Room, error) {
-	rows, err := q.db.Query(ctx, listRooms, arg.Limit, arg.Offset)
+	rows, err := q.db.QueryContext(ctx, listRooms, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -89,6 +87,9 @@ func (q *Queries) ListRooms(ctx context.Context, arg ListRoomsParams) ([]Room, e
 		}
 		items = append(items, i)
 	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -103,12 +104,12 @@ RETURNING id, user_id, created_at, updated_at
 `
 
 type UpdateRoomParams struct {
-	ID     int64       `json:"id"`
-	UserID pgtype.Int8 `json:"user_id"`
+	ID     int64 `json:"id"`
+	UserID int64 `json:"user_id"`
 }
 
 func (q *Queries) UpdateRoom(ctx context.Context, arg UpdateRoomParams) (Room, error) {
-	row := q.db.QueryRow(ctx, updateRoom, arg.ID, arg.UserID)
+	row := q.db.QueryRowContext(ctx, updateRoom, arg.ID, arg.UserID)
 	var i Room
 	err := row.Scan(
 		&i.ID,

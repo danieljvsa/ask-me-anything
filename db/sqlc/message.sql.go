@@ -7,8 +7,7 @@ package db
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5/pgtype"
+	"database/sql"
 )
 
 const createMessage = `-- name: CreateMessage :one
@@ -20,14 +19,14 @@ INSERT INTO messages (
 `
 
 type CreateMessageParams struct {
-	Message  pgtype.Text `json:"message"`
-	UserID   pgtype.Int8 `json:"user_id"`
-	ParentID pgtype.Int8 `json:"parent_id"`
-	RoomID   pgtype.Int8 `json:"room_id"`
+	Message  sql.NullString `json:"message"`
+	UserID   int64          `json:"user_id"`
+	ParentID sql.NullString `json:"parent_id"`
+	RoomID   int64          `json:"room_id"`
 }
 
 func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (Message, error) {
-	row := q.db.QueryRow(ctx, createMessage,
+	row := q.db.QueryRowContext(ctx, createMessage,
 		arg.Message,
 		arg.UserID,
 		arg.ParentID,
@@ -48,23 +47,23 @@ func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (M
 	return i, err
 }
 
-const deleteMessages = `-- name: DeleteMessages :exec
+const deleteMessage = `-- name: DeleteMessage :exec
 DELETE FROM messages
 WHERE id=$1
 `
 
-func (q *Queries) DeleteMessages(ctx context.Context, id int64) error {
-	_, err := q.db.Exec(ctx, deleteMessages, id)
+func (q *Queries) DeleteMessage(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, deleteMessage, id)
 	return err
 }
 
-const getMessages = `-- name: GetMessages :one
+const getMessage = `-- name: GetMessage :one
 SELECT id, message, user_id, parent_id, likes_count, answered, room_id, created_at, updated_at FROM messages
 WHERE id=$1 LIMIT 1
 `
 
-func (q *Queries) GetMessages(ctx context.Context, id int64) (Message, error) {
-	row := q.db.QueryRow(ctx, getMessages, id)
+func (q *Queries) GetMessage(ctx context.Context, id int64) (Message, error) {
+	row := q.db.QueryRowContext(ctx, getMessage, id)
 	var i Message
 	err := row.Scan(
 		&i.ID,
@@ -93,7 +92,7 @@ type ListMessagesParams struct {
 }
 
 func (q *Queries) ListMessages(ctx context.Context, arg ListMessagesParams) ([]Message, error) {
-	rows, err := q.db.Query(ctx, listMessages, arg.Limit, arg.Offset)
+	rows, err := q.db.QueryContext(ctx, listMessages, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -116,26 +115,29 @@ func (q *Queries) ListMessages(ctx context.Context, arg ListMessagesParams) ([]M
 		}
 		items = append(items, i)
 	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 	return items, nil
 }
 
-const updateLikes = `-- name: UpdateLikes :one
+const updateAnswered = `-- name: UpdateAnswered :one
 UPDATE messages 
-SET likes_count = $2 
+SET answered = $2 
 WHERE id=$1
 RETURNING id, message, user_id, parent_id, likes_count, answered, room_id, created_at, updated_at
 `
 
-type UpdateLikesParams struct {
-	ID         int64       `json:"id"`
-	LikesCount pgtype.Int8 `json:"likes_count"`
+type UpdateAnsweredParams struct {
+	ID       int64        `json:"id"`
+	Answered sql.NullBool `json:"answered"`
 }
 
-func (q *Queries) UpdateLikes(ctx context.Context, arg UpdateLikesParams) (Message, error) {
-	row := q.db.QueryRow(ctx, updateLikes, arg.ID, arg.LikesCount)
+func (q *Queries) UpdateAnswered(ctx context.Context, arg UpdateAnsweredParams) (Message, error) {
+	row := q.db.QueryRowContext(ctx, updateAnswered, arg.ID, arg.Answered)
 	var i Message
 	err := row.Scan(
 		&i.ID,
@@ -151,20 +153,49 @@ func (q *Queries) UpdateLikes(ctx context.Context, arg UpdateLikesParams) (Messa
 	return i, err
 }
 
-const updateMessages = `-- name: UpdateMessages :one
+const updateLikes = `-- name: UpdateLikes :one
+UPDATE messages 
+SET likes_count = $2 
+WHERE id=$1
+RETURNING id, message, user_id, parent_id, likes_count, answered, room_id, created_at, updated_at
+`
+
+type UpdateLikesParams struct {
+	ID         int64         `json:"id"`
+	LikesCount sql.NullInt64 `json:"likes_count"`
+}
+
+func (q *Queries) UpdateLikes(ctx context.Context, arg UpdateLikesParams) (Message, error) {
+	row := q.db.QueryRowContext(ctx, updateLikes, arg.ID, arg.LikesCount)
+	var i Message
+	err := row.Scan(
+		&i.ID,
+		&i.Message,
+		&i.UserID,
+		&i.ParentID,
+		&i.LikesCount,
+		&i.Answered,
+		&i.RoomID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateMessage = `-- name: UpdateMessage :one
 UPDATE messages 
 SET message = $2 
 WHERE id=$1
 RETURNING id, message, user_id, parent_id, likes_count, answered, room_id, created_at, updated_at
 `
 
-type UpdateMessagesParams struct {
-	ID      int64       `json:"id"`
-	Message pgtype.Text `json:"message"`
+type UpdateMessageParams struct {
+	ID      int64          `json:"id"`
+	Message sql.NullString `json:"message"`
 }
 
-func (q *Queries) UpdateMessages(ctx context.Context, arg UpdateMessagesParams) (Message, error) {
-	row := q.db.QueryRow(ctx, updateMessages, arg.ID, arg.Message)
+func (q *Queries) UpdateMessage(ctx context.Context, arg UpdateMessageParams) (Message, error) {
+	row := q.db.QueryRowContext(ctx, updateMessage, arg.ID, arg.Message)
 	var i Message
 	err := row.Scan(
 		&i.ID,
@@ -188,12 +219,12 @@ RETURNING id, message, user_id, parent_id, likes_count, answered, room_id, creat
 `
 
 type UpdateParentParams struct {
-	ID       int64       `json:"id"`
-	ParentID pgtype.Int8 `json:"parent_id"`
+	ID       int64          `json:"id"`
+	ParentID sql.NullString `json:"parent_id"`
 }
 
 func (q *Queries) UpdateParent(ctx context.Context, arg UpdateParentParams) (Message, error) {
-	row := q.db.QueryRow(ctx, updateParent, arg.ID, arg.ParentID)
+	row := q.db.QueryRowContext(ctx, updateParent, arg.ID, arg.ParentID)
 	var i Message
 	err := row.Scan(
 		&i.ID,
