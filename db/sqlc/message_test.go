@@ -106,6 +106,25 @@ func TestUpdateMessageAnswered(t *testing.T) {
 	require.WithinDuration(t, message1.CreatedAt.Time, message2.CreatedAt.Time, time.Second)
 }
 
+func TestUpdateMessageBody(t *testing.T) {
+	message1 := createRandomMessage(t)
+
+	arg := UpdateMessageParams{
+		ID: message1.ID,
+		Message: sql.NullString{String: util.RandomMessageString(), Valid: true},
+	}
+
+	message2, err := testQueries.UpdateMessage(context.Background(), arg)
+
+	require.NoError(t, err)
+	require.NotEmpty(t, message2)
+
+	require.Equal(t, message1.ID, message2.ID)
+	require.Equal(t, arg.Message, message2.Message)
+
+	require.WithinDuration(t, message1.CreatedAt.Time, message2.CreatedAt.Time, time.Second)
+}
+
 func TestUpdateMessageParent(t *testing.T) {
 	message1 := createRandomMessage(t)
 
