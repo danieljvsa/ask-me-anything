@@ -43,7 +43,7 @@ jobs:
       run: go get -u github.com/golang-migrate/migrate/v4 
 
     - name: Add Migrate to PATH 
-      run: echo "$GOPATH/bin" &gt;&gt; $GITHUB_PATH
+      run: echo "$GOPATH/bin" >> $GITHUB_PATH
 
     - name: Run migrations
       run: make migrateup
