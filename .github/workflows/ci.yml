@@ -40,10 +40,7 @@ jobs:
       id: go
 
     - name: Install golang-migrate
-      run: |
-        curl -L https://github.com/golang-migrate/migrate/releases/download/v4.18.1/migrate.darwin-arm64.tar.gz | tar xvz
-        sudo mv migrate /usr/bin/migrate
-        which migrate
+      run: go get -u github.com/golang-migrate/migrate/v4 
 
     - name: Run migrations
       run: make migrateup
