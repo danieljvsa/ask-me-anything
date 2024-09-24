@@ -22,7 +22,7 @@ jobs:
           POSTGRES_USER: root
           POSTGRES_PASSWORD: root
           POSTGRES_DB: ama
-        options: 
+        options: >-
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
@@ -37,8 +37,14 @@ jobs:
         go-version: '1.23.1'
       id: go
 
+    - name: Install golang-migrate
+      run: |
+        curl -L https://github.com/golang-migrate/migrate/releases/download/v4.18.1/migrate.darwin-arm64.tar.gz | tar xvz
+        mv migrate.linux-amd64 /usr/bin
+        which migrate
+
     - name: Run migrations
-      uses: make migrateup
+      run: make migrateup
 
     - name: Test
       run: make test
